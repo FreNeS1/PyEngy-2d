@@ -27,13 +27,21 @@ class PyEngyError(Exception):
         """List of errors that caused this one to be raised or that this one contains."""
 
     def __str__(self) -> str:
-        error_string = "[{}] PyEngyError: {}.".format(self.timestamp, self.message)
+        error_string = self._error_string()
         if len(self.caused_by) != 0:
             error_string += " Caused by: ["
             for error_cause in self.caused_by:
                 error_string += "\n  {}".format(self.__string_error_cause(error_cause))
             error_string += "\n]"
         return error_string
+
+    def _error_string(self):
+        """
+        Returns itself as a string with desired format.
+
+        :return: The error as a descriptive string.
+        """
+        return "[{}] PyEngyError: {}.".format(self.timestamp, self.message)
 
     @staticmethod
     def __string_error_cause(error_cause: Exception) -> str:

@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNSTAGED] - YYYY-MM-DD
 ### Added
+- Base Node class with composition and delegation.
+- Custom errors.
 ### Changed
 ### Deprecated
 ### Removed

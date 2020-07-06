@@ -10,20 +10,20 @@ It contains the utility methods:
 
 from time import time
 
-START_TIME: float = time()
+START_TIME: float = time() * 1000
 """The time at the moment this package was loaded. Used as time reference."""
 
 TIMESTAMP_FORMAT: str = "{:02d}:{:02d}:{:02d}.{:03d}"
 """Format of the timestamp. Should be able to display hours, minutes, seconds and millis."""
 
 
-def get_current_time() -> int:
+def get_current_time() -> float:
     """
     Calculates and returns the current execution time.
 
     :return: Current time in milliseconds.
     """
-    return int((time() - START_TIME) * 1000)
+    return (time() * 1000) - START_TIME
 
 
 def get_timestamp() -> str:
@@ -32,7 +32,7 @@ def get_timestamp() -> str:
 
     :return: Timestamp of current time.
     """
-    return __time_to_timestamp(get_current_time())
+    return __time_to_timestamp(int(get_current_time()))
 
 
 def __time_to_timestamp(time_millis: int) -> str:

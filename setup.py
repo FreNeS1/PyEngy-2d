@@ -9,6 +9,9 @@ AUTHOR = 'José Antonio Díaz Mata'
 EMAIL = 'jose.antonio.diaz.mata@gmail.com'
 URL = 'https://github.com/FreNeS1/PyEngy-2d'
 PYTHON_REQUIRES = '>=3.6, <4'
+INSTALL_REQUIRES = [
+    "pygame>=1.9.0<2.0.0"
+]
 
 with open('README.md') as f:
     readme_text = f.read()
@@ -27,5 +30,6 @@ setup(
     url=URL,
     license=license_text,
     packages=["pyengy"],
+    install_requires=INSTALL_REQUIRES,
     python_requires=PYTHON_REQUIRES,
 )
