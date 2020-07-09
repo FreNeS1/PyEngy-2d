@@ -23,4 +23,4 @@ class NodeError(PyEngyError):
         """Valid identifier of the node that raised the exception. Usually the string representation of the node."""
 
     def _error_string(self):
-        return "[{}] NodeError for node ({}): {}.".format(self.timestamp, self.node, self.message)
+        return "NodeError for node ({}): {}.".format(self.node, self.message)

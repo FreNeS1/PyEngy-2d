@@ -6,16 +6,21 @@ from typing import Optional, List, Union
 
 from pygame.event import EventType
 
-from pyengy.error import NodeError
+from pyengy.error import PyEngyError, NodeError
+from pyengy.util.context_utils import Context
+from pyengy.util.logger_utils import get_logger
 
 
 class Node:
     """
-    Represents a given node in an environment. Contains the basic logic for node encapsulation and delegating
-    interactions to the nodes themselves. Each node should handle it's own render with ``_render_self``, update with
-    ``_update_self`` and event handling with ``_handle_event_self``.
+    Represents a given node in an environment.
 
-    If a node is inactive it will not render, update or handle events, and neither will its children.
+    Contains the basic logic for node encapsulation and delegating. Instantiate the node with the constructor and then
+    build the root node. Each node should handle it's own render with ``_render_self``, update with ``_update_self``
+    and event handling with ``_handle_event_self``.
+
+    If a node is inactive it will not update or handle events, and neither will its children. If a node is invisible it
+    will not render, and neither will its children
     """
 
     def __init__(self, name: str, parent: Optional[Node] = None, children: Optional[List[Node]] = None):
@@ -30,29 +35,32 @@ class Node:
         """
         self.id = id(self)
         """Unique identity id of the node. Same value as the identity of the object in python."""
+        self.app_name = ""
+        """App name of the node, given at build time."""
         self.name = name
         """
         Name of the node. Will be used for user friendly interactions on log, display or error. Does not need to be
-        globally unique, but should be unique between the children of the same parent.
+        globally unique, but should be unique between the children of the same parent and readonly.
         """
         self.path = name
-        """Path of the node. Will be used to identify the node with user friendly notation. Should be unique."""
+        """Path of the node. Will be used to identify the node with tree notation. Should be unique and readonly."""
+        self.visible = True
+        """Marks if an node is visible. Invisible nodes do not render, and neither will its children."""
         self.active = True
-        """
-        Flag that marks if an node is active. Inactive nodes do not render, update or handle events, and neither will
-        its children.
-        """
+        """Marks if an node is active. Inactive nodes do not update or handle events, and neither will its children."""
         self.parent: Optional[Node] = None
         """Reference to the parent node. If None, this is a root node."""
         self.children: List[Node] = []
         """List of child nodes."""
+        self._logger = None
+        """Logger for the node. Will be instantiated as a PyEngyNode when node is built."""
 
         if parent:
             self.set_parent(parent)
         if children:
             self.set_children(children)
 
-    def __str__(self):
+    def __str__(self) -> str:
         self_str = self.get_display_name()
         if len(self.children) != 0:
             self_str += " {"
@@ -79,24 +87,22 @@ class Node:
 
     def get_node(self, identifier: Union[int, str]) -> Optional[Node]:
         """
-        Retrieves a node. Should be a descendant of this one.
+        Retrieves a node. Node retrieved should be a relative of the node. Delegates the search to the root node.
 
-        :param identifier: The id, path to retrieve
+        :param identifier: The id, or fully qualified path of the node to retrieve.
         :return: The retrieved node or None if node does not exist or was not found.
         """
-        # Node is an ID
-        if isinstance(identifier, int):
-            if self.id == identifier:
-                return self
-            catcher = [c.get_node(identifier) for c in self.children]
-            if len(catcher) == 0:
-                return None
-            return catcher[0]
+        if self.parent:
+            return self.parent.get_node(identifier)
 
-        # Node is a path
-        if self.name not in identifier:
-            return self.__get_node_from_path(identifier)
-        return self.__get_node_from_path(identifier[identifier.index(self.name) + len(self.name) + 1:])
+        # Identifier is an id
+        if isinstance(identifier, int):
+            return self.__find_node_by_id(identifier)
+
+        # Identifier is a fully qualified path.
+        if not identifier.startswith("{}/".format(self.name)):
+            return None
+        return self.__find_node_by_path(identifier[len(self.name) + 1:])
 
     def set_parent(self, parent: Optional[Node]) -> None:
         """
@@ -139,9 +145,10 @@ class Node:
             raise NodeError(self.get_identifier(), "Not unique name for child \"{}\"".format(child.name))
         if child.parent:
             child.parent.remove_child(child)
+
         child.parent = self
-        child.path = "{}/{}".format(self.path, child.name)
         self.children.append(child)
+        child.__update_path()
 
     def remove_child(self, child: Union[int, str, Node]) -> None:
         """
@@ -174,66 +181,125 @@ class Node:
         child_node.path = child_node.name
         self.children.remove(child_node)
 
-    def update(self, delta: float) -> None:
+    def build(self, context: Context):
         """
-        Updates the node and its children. This updates are done as fast as possible.
+        Builds the node. This should always be called once before doing any operations with the node
 
-        :param delta: The time frame since the last update in milliseconds.
+        :param context: Contains the context data of the application.
         """
-        if self.active:
-            self._update_self(delta)
-            for child in self.children:
-                child.update(delta)
+        try:
+            self._build_self(context)
+        except PyEngyError as err:
+            self._logger.error(NodeError(self.get_identifier(), "Could not build node", [err]))
+        for child in self.children:
+            child.build(context)
 
-    def render(self, delta: float) -> None:
+    def render(self, delta: float, context: Context) -> None:
         """
         Renders the node. This render can be called at a fixed rate to match display rate.
 
         :param delta: The time since the last render in milliseconds.
+        :param context: Contains the context data of the application.
+        """
+        if self.visible:
+            try:
+                self._render_self(delta, context)
+            except PyEngyError as err:
+                self._logger.error(NodeError(self.get_identifier(), "Could not render node", [err]))
+            for child in self.children:
+                child.render(delta, context)
+
+    def update(self, delta: float, context: Context) -> None:
+        """
+        Updates the node and its children. This updates are done as fast as possible.
+
+        :param delta: The time frame since the last update in milliseconds.
+        :param context: Contains the context data of the application.
         """
         if self.active:
-            self._render_self(delta)
+            try:
+                self._update_self(delta, context)
+            except PyEngyError as err:
+                self._logger.error(NodeError(self.get_identifier(), "Could not update node", [err]))
             for child in self.children:
-                child.render(delta)
+                child.update(delta, context)
 
-    def handle_event(self, event: EventType) -> None:
+    def handle_event(self, event: EventType, context: Context) -> None:
         """
         Handles a node event. Events are handled before updates.
 
         :param event: The event to handle.
+        :param context: Contains the context data of the application.
         """
         if self.active:
-            self._handle_event_self(event)
+            try:
+                self._handle_event_self(event, context)
+            except PyEngyError as err:
+                self._logger.error(NodeError(self.get_identifier(), "Could not handle event {}".format(event), [err]))
             for child in self.children:
-                child.handle_event(event)
+                child.handle_event(event, context)
 
-    def _render_self(self, delta: float) -> None:
+    def _build_self(self, context: Context) -> None:
+        """
+        Handles the node build.
+
+        :param context: Contains the context data of the application.
+        """
+        self.app_name = context.get("metadata.app_name")
+        self._logger = get_logger(self.path, self.app_name)
+
+    def _render_self(self, delta: float, context: Context) -> None:
         """
         Handles the node update.
 
         :param delta: The time since the last update in milliseconds.
+        :param context: Contains the context data of the application.
         """
 
-    def _update_self(self, delta: float) -> None:
+    def _update_self(self, delta: float, context: Context) -> None:
         """
         Handles the node render.
 
         :param delta: The time since the last render in milliseconds.
+        :param context: Contains the context data of the application.
         """
 
-    def _handle_event_self(self, event: EventType) -> None:
+    def _handle_event_self(self, event: EventType, context: Context) -> None:
         """
         Handles the node event.
 
         :param event: The event to handle.
+        :param context: Contains the context data of the application.
         """
 
-    def __get_node_from_path(self, path: str) -> Optional[Node]:
-        """
-        Auxiliary method to retrieve a node from a path chain
+    def __update_path(self):
+        """Auxiliary method to update the path of a node and child nodes."""
+        self.path = "{}/{}".format(self.parent.path, self.name)
+        if self._logger is not None:
+            self._logger = get_logger(self.path, self.app_name)
+        for child in self.children:
+            child.__update_path()
 
-        :param path: The relative path of the node from the current one.
-        :return: The node specified in the path if it exists.
+    def __find_node_by_id(self, id_value: int) -> Optional[Node]:
+        """
+        Auxiliary method to retrieve a node from an id. First call to this method should be delegated to a root node.
+
+        :param id_value: The id of the node to retrieve.
+        :return: The retrieved node or None if node does not exist or was not found.
+        """
+        if self.id == id_value:
+            return self
+        catcher = [c.__find_node_by_id(id_value) for c in self.children]
+        if len(catcher) == 0:
+            return None
+        return catcher[0]
+
+    def __find_node_by_path(self, path: str) -> Optional[Node]:
+        """
+        Auxiliary method to retrieve a node from a path. First call to this method should be delegated to a root node.
+
+        :param path: The path of the node to retrieve.
+        :return: The retrieved node or None if node does not exist or was not found.
         """
         if "/" not in path:
             catcher = [c for c in self.children if c.name == path]
@@ -245,16 +311,16 @@ class Node:
         catcher = [c for c in self.children if c.name == path[:separator_index]]
         if len(catcher) == 0:
             return None
-        return catcher[0].__get_node_from_path(path[separator_index + 1:])
+        return catcher[0].__find_node_by_path(path[separator_index + 1:])
 
-    def __cyclic_node_dependency(self, seen: List[Node]):
+    def __cyclic_node_dependency(self, seen: List[Node]) -> bool:
         """
         Auxiliary method to check for cyclic dependencies between nodes.
 
         :param seen: The list of nodes already seen.
-        :return: True if there is a cyclic dependency between the nodes.
+        :return: True if there is a cyclic dependency between the nodes. False otherwise.
         """
-        if self.parent in seen:
+        if self in seen:
             return True
         if self.parent is not None:
             seen.append(self)

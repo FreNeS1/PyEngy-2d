@@ -9,30 +9,41 @@ It contains the utility methods:
 """
 
 from time import time
+from typing import Dict
 
-START_TIME: float = time() * 1000
-"""The time at the moment this package was loaded. Used as time reference."""
+from pyengy.error import PyEngyError
+
+START_TIME: Dict[str, float] = {"default": time() * 1000}
+"""The start time of the given apps. Key "default" is used as time reference when no app is given."""
 
 TIMESTAMP_FORMAT: str = "{:02d}:{:02d}:{:02d}.{:03d}"
 """Format of the timestamp. Should be able to display hours, minutes, seconds and millis."""
 
 
-def get_current_time() -> float:
+def reset_time(app: str = "default") -> None:
+    """Resets START TIME to current time for a given app."""
+    START_TIME[app] = time() * 1000
+
+
+def get_current_time(app: str = "default") -> float:
     """
     Calculates and returns the current execution time.
 
     :return: Current time in milliseconds.
     """
-    return (time() * 1000) - START_TIME
+    try:
+        return (time() * 1000) - START_TIME[app]
+    except KeyError as err:
+        raise PyEngyError("App \"{}\" does not exist or was not registered".format(app), [err])
 
 
-def get_timestamp() -> str:
+def get_timestamp(app: str = "default") -> str:
     """
     Calculates and returns a timestamp for the current execution time.
 
     :return: Timestamp of current time.
     """
-    return __time_to_timestamp(int(get_current_time()))
+    return __time_to_timestamp(int(get_current_time(app)))
 
 
 def __time_to_timestamp(time_millis: int) -> str:

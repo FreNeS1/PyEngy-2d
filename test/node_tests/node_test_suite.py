@@ -7,6 +7,7 @@ from pygame.event import Event
 
 from pyengy.error import NodeError
 from pyengy.node import Node
+from pyengy.util.context_utils import Context
 
 
 def create_node_tree():
@@ -41,6 +42,7 @@ class NodeTestSuite(unittest.TestCase):
 
         self.assertEqual(id(node), node.id)
         self.assertEqual(True, node.active)
+        self.assertEqual(True, node.visible)
         self.assertEqual("NODE_NAME", node.name)
         self.assertEqual("NODE_NAME", node.path)
         self.assertEqual(None, node.parent)
@@ -52,7 +54,8 @@ class NodeTestSuite(unittest.TestCase):
         - When: Instantiating a node tree with parent.
         - Then: Should create a node tree with correct parameters.
         """
-        root = Node("ROOT")
+        test = Node("TEST")
+        root = Node("ROOT", parent=test)
         branch1 = Node("BRANCH1", parent=root)
         branch2 = Node("BRANCH2", parent=root)
         leaf11 = Node("LEAF11", parent=branch1)
@@ -63,8 +66,9 @@ class NodeTestSuite(unittest.TestCase):
 
         self.assertEqual(id(branch2), branch2.id)
         self.assertEqual(True, branch2.active)
+        self.assertEqual(True, branch2.visible)
         self.assertEqual("BRANCH2", branch2.name)
-        self.assertEqual("ROOT/BRANCH2", branch2.path)
+        self.assertEqual("TEST/ROOT/BRANCH2", branch2.path)
         self.assertEqual(root, branch2.parent)
         self.assertListEqual([leaf21, leaf22, leaf23], branch2.children)
 
@@ -82,11 +86,13 @@ class NodeTestSuite(unittest.TestCase):
         branch1 = Node("BRANCH1", children=[leaf11, leaf12])
         branch2 = Node("BRANCH2", children=[leaf21, leaf22, leaf23])
         root = Node("ROOT", children=[branch1, branch2])
+        test = Node("TEST", children=[root])
 
         self.assertEqual(id(branch1), branch1.id)
         self.assertEqual(True, branch1.active)
+        self.assertEqual(True, branch1.visible)
         self.assertEqual("BRANCH1", branch1.name)
-        self.assertEqual("ROOT/BRANCH1", branch1.path)
+        self.assertEqual("TEST/ROOT/BRANCH1", branch1.path)
         self.assertIs(root, branch1.parent)
         self.assertListEqual([leaf11, leaf12], branch1.children)
 
@@ -119,9 +125,11 @@ class NodeTestSuite(unittest.TestCase):
         - Then: Should retrieve the node.
         """
         root = create_node_tree()
-        descendant = root.children[0].children[0]
+        branch1 = [n for n in root.children if n.name == "BRANCH1"][0]
+        leaf11 = [n for n in branch1.children if n.name == "LEAF11"][0]
+        leaf12 = [n for n in branch1.children if n.name == "LEAF12"][0]
 
-        self.assertIs(root.get_node(descendant.id), descendant)
+        self.assertIs(leaf12.get_node(leaf11.id), leaf11)
 
     def test_get_node_with_non_existing_id_returns_none(self):
         """
@@ -141,20 +149,10 @@ class NodeTestSuite(unittest.TestCase):
         """
         root = create_node_tree()
         branch2 = [n for n in root.children if n.name == "BRANCH2"][0]
+        leaf21 = [n for n in branch2.children if n.name == "LEAF21"][0]
+        leaf23 = [n for n in branch2.children if n.name == "LEAF23"][0]
 
-        self.assertIs(root.get_node("ROOT/BRANCH2"), branch2)
-
-    def test_get_node_with_existing_relative_path_returns_node(self):
-        """
-        - Given: A node tree structure.
-        - When: Retrieving node by relative path that exists.
-        - Then: Should retrieve the node.
-        """
-        root = create_node_tree()
-        branch1 = [n for n in root.children if n.name == "BRANCH1"][0]
-        leaf12 = [n for n in branch1.children if n.name == "LEAF12"][0]
-
-        self.assertIs(root.get_node("BRANCH1/LEAF12"), leaf12)
+        self.assertIs(leaf23.get_node("ROOT/BRANCH2/LEAF21"), leaf21)
 
     def test_get_node_with_missing_path_returns_none(self):
         """
@@ -164,7 +162,7 @@ class NodeTestSuite(unittest.TestCase):
         """
         root = create_node_tree()
 
-        self.assertIsNone(root.get_node("BRANCH2/LEAF12"))
+        self.assertIsNone(root.get_node("ROOT/BRANCH2/LEAF12"))
 
     def test_set_parent_to_none_resets_old_parent(self):
         """
@@ -294,7 +292,7 @@ class NodeTestSuite(unittest.TestCase):
         branch2 = [n for n in root.children if n.name == "BRANCH2"][0]
 
         new_branch2 = Node("BRANCH2")
-        self.assertRaises(NodeError, lambda: branch1.set_children([branch1, branch2, new_branch2]))
+        self.assertRaises(NodeError, lambda: root.set_children([branch1, branch2, new_branch2]))
 
     def test_add_child_node_sets_node_as_child_and_resets_old_parent(self):
         """
@@ -419,40 +417,22 @@ class NodeTestSuite(unittest.TestCase):
 
         self.assertRaises(NodeError, lambda: branch1.remove_child(Node("")))
 
-    def test_update_node_calls_self_update(self):
+    def test_build_node_calls_self_build(self):
         """
         - Given: A node tree structure.
-        - When: Calling update on a node.
-        - Then: Should update self and children.
+        - When: Calling render on a node.
+        - Then: Should handle event self and children.
         """
-        delta = 12.1248
+        context = Context({})
         node = Node("NODE")
         child = Node("CHILD", parent=node)
-        node._update_self = MagicMock()
-        child._update_self = MagicMock()
+        node._build_self = MagicMock()
+        child._build_self = MagicMock()
 
-        node.update(delta)
+        node.build(context)
 
-        node._update_self.assert_called_with(delta)
-        child._update_self.assert_called_with(delta)
-
-    def test_update_inactive_node_does_not_call_self_update(self):
-        """
-        - Given: A node tree structure.
-        - When: Calling update on an inactive node.
-        - Then: Should not update self or children.
-        """
-        delta = 12.1248
-        node = Node("NODE")
-        child = Node("CHILD", parent=node)
-        node._update_self = MagicMock()
-        child._update_self = MagicMock()
-
-        node.active = False
-        node.update(delta)
-
-        node._update_self.assert_not_called()
-        child._update_self.assert_not_called()
+        node._build_self.assert_called_with(context)
+        child._build_self.assert_called_with(context)
 
     def test_render_node_calls_self_render(self):
         """
@@ -461,33 +441,72 @@ class NodeTestSuite(unittest.TestCase):
         - Then: Should handle event self and children.
         """
         delta = 12.1248
+        context = Context({})
         node = Node("NODE")
         child = Node("CHILD", parent=node)
         node._render_self = MagicMock()
         child._render_self = MagicMock()
 
-        node.render(delta)
+        node.render(delta, context)
 
-        node._render_self.assert_called_with(delta)
-        child._render_self.assert_called_with(delta)
+        node._render_self.assert_called_with(delta, context)
+        child._render_self.assert_called_with(delta, context)
 
-    def test_render_inactive_node_does_not_call_self_render(self):
+    def test_render_invisible_node_does_not_call_self_render(self):
         """
         - Given: A node tree structure.
-        - When: Calling render on an inactive node.
+        - When: Calling render on an invisible node.
         - Then: Should not render self or children.
         """
         delta = 12.1248
+        context = Context({})
         node = Node("NODE")
         child = Node("CHILD", parent=node)
         node._render_self = MagicMock()
         child._render_self = MagicMock()
 
-        node.active = False
-        node.render(delta)
+        node.visible = False
+        node.render(delta, context)
 
         node._render_self.assert_not_called()
         child._render_self.assert_not_called()
+
+    def test_update_node_calls_self_update(self):
+        """
+        - Given: A node tree structure.
+        - When: Calling update on a node.
+        - Then: Should update self and children.
+        """
+        delta = 12.1248
+        context = Context({})
+        node = Node("NODE")
+        child = Node("CHILD", parent=node)
+        node._update_self = MagicMock()
+        child._update_self = MagicMock()
+
+        node.update(delta, context)
+
+        node._update_self.assert_called_with(delta, context)
+        child._update_self.assert_called_with(delta, context)
+
+    def test_update_inactive_node_does_not_call_self_update(self):
+        """
+        - Given: A node tree structure.
+        - When: Calling update on an inactive node.
+        - Then: Should not update self or children.
+        """
+        delta = 12.1248
+        context = Context({})
+        node = Node("NODE")
+        child = Node("CHILD", parent=node)
+        node._update_self = MagicMock()
+        child._update_self = MagicMock()
+
+        node.active = False
+        node.update(delta, context)
+
+        node._update_self.assert_not_called()
+        child._update_self.assert_not_called()
 
     def test_handle_event_node_calls_self_handle_event(self):
         """
@@ -496,15 +515,16 @@ class NodeTestSuite(unittest.TestCase):
         - Then: Should handle event self and children.
         """
         event = Event(-1, {})
+        context = Context({})
         node = Node("NODE")
         child = Node("CHILD", parent=node)
         node._handle_event_self = MagicMock()
         child._handle_event_self = MagicMock()
 
-        node.handle_event(event)
+        node.handle_event(event, context)
 
-        node._handle_event_self.assert_called_with(event)
-        child._handle_event_self.assert_called_with(event)
+        node._handle_event_self.assert_called_with(event, context)
+        child._handle_event_self.assert_called_with(event, context)
 
     def test_handle_event_inactive_node_does_not_call_self_handle_event(self):
         """
@@ -513,13 +533,14 @@ class NodeTestSuite(unittest.TestCase):
         - Then: Should not handle event self or children.
         """
         event = Event(-1, {})
+        context = Context({})
         node = Node("NODE")
         child = Node("CHILD", parent=node)
         node._handle_event_self = MagicMock()
         child._handle_event_self = MagicMock()
 
         node.active = False
-        node.handle_event(event)
+        node.handle_event(event, context)
 
         node._handle_event_self.assert_not_called()
         child._handle_event_self.assert_not_called()

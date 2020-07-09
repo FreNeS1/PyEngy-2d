@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from pyengy.util.time_utils import get_timestamp
-
 
 class PyEngyError(Exception):
     """Base error for every type of exception raised within the engine. Can handle error composition."""
@@ -19,8 +17,6 @@ class PyEngyError(Exception):
         """
         super().__init__(message)
 
-        self.timestamp = get_timestamp()
-        """Timestamp at the time that the error was raised."""
         self.message = message
         """Descriptive human readable message of the error."""
         self.caused_by: List[Exception] = caused_by if caused_by is not None else []
@@ -41,7 +37,7 @@ class PyEngyError(Exception):
 
         :return: The error as a descriptive string.
         """
-        return "[{}] PyEngyError: {}.".format(self.timestamp, self.message)
+        return "PyEngyError: {}.".format(self.message)
 
     @staticmethod
     def __string_error_cause(error_cause: Exception) -> str:
