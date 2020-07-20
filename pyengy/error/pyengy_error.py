@@ -25,10 +25,8 @@ class PyEngyError(Exception):
     def __str__(self) -> str:
         error_string = self._error_string()
         if len(self.caused_by) != 0:
-            error_string += " Caused by: ["
-            for error_cause in self.caused_by:
-                error_string += "\n  {}".format(self.__string_error_cause(error_cause))
-            error_string += "\n]"
+            error_causes_string = list(map(lambda e: "\n  {}".format(self.__string_error_cause(e)), self.caused_by))
+            error_string = "{} Caused by: [{}\n]".format(error_string, "".join(error_causes_string))
         return error_string
 
     def _error_string(self):

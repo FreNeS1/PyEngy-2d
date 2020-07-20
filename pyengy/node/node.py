@@ -8,7 +8,7 @@ from pygame.event import EventType
 
 from pyengy.error import PyEngyError, NodeError
 from pyengy.util.context_utils import Context
-from pyengy.util.logger_utils import get_logger
+from pyengy.util.logger_utils import get_logger, PyEngyLoggerWrapper
 
 
 class Node:
@@ -52,7 +52,7 @@ class Node:
         """Reference to the parent node. If None, this is a root node."""
         self.children: List[Node] = []
         """List of child nodes."""
-        self._logger = None
+        self._logger: Optional[PyEngyLoggerWrapper] = None
         """Logger for the node. Will be instantiated as a PyEngyNode when node is built."""
 
         if parent:
@@ -63,10 +63,8 @@ class Node:
     def __str__(self) -> str:
         self_str = self.get_display_name()
         if len(self.children) != 0:
-            self_str += " {"
-            for child in self.children:
-                self_str += "\n  {}".format(str(child).replace("\n", "\n  "))
-            self_str += "\n}"
+            children_str = list(map(lambda child: "\n  {}".format(str(child).replace("\n", "\n  ")), self.children))
+            self_str = "{} {{{}\n}}".format(self_str, "".join(children_str))
         return self_str
 
     def get_display_name(self) -> str:
@@ -148,7 +146,7 @@ class Node:
 
         child.parent = self
         self.children.append(child)
-        child.__update_path()
+        child._on_parent_changed()
 
     def remove_child(self, child: Union[int, str, Node]) -> None:
         """
@@ -178,8 +176,8 @@ class Node:
             child_node = child
 
         child_node.parent = None
-        child_node.path = child_node.name
         self.children.remove(child_node)
+        child_node._on_parent_changed()
 
     def build(self, context: Context):
         """
@@ -272,13 +270,16 @@ class Node:
         :param context: Contains the context data of the application.
         """
 
-    def __update_path(self):
-        """Auxiliary method to update the path of a node and child nodes."""
-        self.path = "{}/{}".format(self.parent.path, self.name)
+    def _on_parent_changed(self):
+        """
+        Auxiliary method to update a node when it's parent changes. By default updates the path.
+        Will call itself on the node children automatically.
+        """
+        self.path = "{}/{}".format(self.parent.path, self.name) if self.parent is not None else self.name
         if self._logger is not None:
             self._logger = get_logger(self.path, self.app_name)
         for child in self.children:
-            child.__update_path()
+            child._on_parent_changed()
 
     def __find_node_by_id(self, id_value: int) -> Optional[Node]:
         """

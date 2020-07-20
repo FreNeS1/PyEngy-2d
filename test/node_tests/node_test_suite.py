@@ -1,7 +1,7 @@
 """Contains the test suite for the base node class."""
 
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import Mock
 
 from pygame.event import Event
 
@@ -426,8 +426,8 @@ class NodeTestSuite(unittest.TestCase):
         context = Context({})
         node = Node("NODE")
         child = Node("CHILD", parent=node)
-        node._build_self = MagicMock()
-        child._build_self = MagicMock()
+        node._build_self = Mock()
+        child._build_self = Mock()
 
         node.build(context)
 
@@ -444,8 +444,8 @@ class NodeTestSuite(unittest.TestCase):
         context = Context({})
         node = Node("NODE")
         child = Node("CHILD", parent=node)
-        node._render_self = MagicMock()
-        child._render_self = MagicMock()
+        node._render_self = Mock()
+        child._render_self = Mock()
 
         node.render(delta, context)
 
@@ -462,8 +462,8 @@ class NodeTestSuite(unittest.TestCase):
         context = Context({})
         node = Node("NODE")
         child = Node("CHILD", parent=node)
-        node._render_self = MagicMock()
-        child._render_self = MagicMock()
+        node._render_self = Mock()
+        child._render_self = Mock()
 
         node.visible = False
         node.render(delta, context)
@@ -481,8 +481,8 @@ class NodeTestSuite(unittest.TestCase):
         context = Context({})
         node = Node("NODE")
         child = Node("CHILD", parent=node)
-        node._update_self = MagicMock()
-        child._update_self = MagicMock()
+        node._update_self = Mock()
+        child._update_self = Mock()
 
         node.update(delta, context)
 
@@ -499,8 +499,8 @@ class NodeTestSuite(unittest.TestCase):
         context = Context({})
         node = Node("NODE")
         child = Node("CHILD", parent=node)
-        node._update_self = MagicMock()
-        child._update_self = MagicMock()
+        node._update_self = Mock()
+        child._update_self = Mock()
 
         node.active = False
         node.update(delta, context)
@@ -518,8 +518,8 @@ class NodeTestSuite(unittest.TestCase):
         context = Context({})
         node = Node("NODE")
         child = Node("CHILD", parent=node)
-        node._handle_event_self = MagicMock()
-        child._handle_event_self = MagicMock()
+        node._handle_event_self = Mock()
+        child._handle_event_self = Mock()
 
         node.handle_event(event, context)
 
@@ -536,8 +536,8 @@ class NodeTestSuite(unittest.TestCase):
         context = Context({})
         node = Node("NODE")
         child = Node("CHILD", parent=node)
-        node._handle_event_self = MagicMock()
-        child._handle_event_self = MagicMock()
+        node._handle_event_self = Mock()
+        child._handle_event_self = Mock()
 
         node.active = False
         node.handle_event(event, context)

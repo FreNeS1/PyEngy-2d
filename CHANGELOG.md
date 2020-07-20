@@ -6,9 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNSTAGED] - YYYY-MM-DD
 ### Added
-- Base Node class with composition and delegation.
-- Custom errors.
+- App class that acts as a controller for the nodes.
+- Node class with inheritance, tree structure and action delegation. The following nodes were created:
+    - Utility Nodes: `Node`
+    - 2D Nodes: `Node2D`
+- Customizable, printable and easy to use errors.
+- Custom utils:
+    - Custom context object to retrieve and set values.
+    - Logger with built in app format and timestamps.
+    - Time control based on milliseconds since custom epoch. 
 ### Changed
+- Upped PyGame to version 2.0.0
 ### Deprecated
 ### Removed
 ### Fixed

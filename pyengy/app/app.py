@@ -1,7 +1,9 @@
 """Contains the App class."""
 
 import threading
-from typing import Optional
+from typing import Optional, Tuple, List
+
+import pygame
 
 from pyengy.node import Node
 from pyengy.util.context_utils import Context
@@ -21,18 +23,28 @@ class App:
     the app to close or stop, use the ``wait`` method, which will call the join method on the app thread.
     """
 
-    def __init__(self, name, scene: Node):
+    def __init__(self, name, scene: Node, window_size: Tuple[int, int] = (640, 480), fullscreen: bool = False):
         """
         Instantiates a new PyEngy app.
 
         :param name: The name of the app. Should be unique.
         :param scene: The scene for the app to handle.
+        :param window_size: The size of the window.
+        :param fullscreen: If true, will set to fullscreen. Otherwise will set to window.
         """
+        # Create the app variables and thread
         self.name = name
         self._scene = scene
         self._stop_event = threading.Event()
-        self._app = threading.Thread(target=self.__app_loop, name=name, daemon=True)
+        self._app = threading.Thread(target=self.__run_app, name=name, daemon=True)
 
+        # Set window parameters
+        self._screen = None
+        self._window_size = window_size
+        self._fullscreen = fullscreen
+        self._background = None
+
+        # Set defaults for execution variables
         reset_time(self.name)
         self._previous_time = 0.0
         self._current_time = 0.0
@@ -45,12 +57,13 @@ class App:
             self._logger.debug("Trying to start a running app \"{}\"".format(self.name))
             return
 
+        # Reset the time of app
         reset_time(self.name)
         self._logger.debug("Starting app \"{}\"".format(self.name))
         self._previous_time = get_current_time(self.name)
         self._current_time = get_current_time(self.name)
-        self._context = self.__build_context()
-        self._scene.build(self._context)
+
+        # Start the thread
         self._stop_event.clear()
         self._app.start()
 
@@ -85,47 +98,92 @@ class App:
         return Context({
             "metadata": {
                 "app_name": self.name
-            }
+            },
+            "screen": self._screen
         })
 
+    def __run_app(self) -> None:
+        """Method executed by the app thread. Initializes the app and then calls app loop."""
+        # Build the PyGame window
+        screen_flags = pygame.DOUBLEBUF
+        if self._fullscreen:
+            screen_flags = screen_flags | pygame.FULLSCREEN | pygame.HWACCEL
+        self._screen = pygame.display.set_mode(self._window_size, screen_flags)
+
+        # Set default background
+        self._background = pygame.Surface(self._screen.get_size())
+        self._background.fill((30, 15, 180))
+        self._background = self._background.convert()
+
+        # Build the context and the scene
+        self._context = self.__build_context()
+        self._scene.build(self._context)
+
+        # Execute the app loop
+        self.__app_loop()
+
     def __app_loop(self) -> None:
-        """Internal method to execute to run an app."""
+        """Internal app loop. Will handle events, updates and renders."""
         while not self._stop_event.is_set():
             self._current_time = get_current_time(self.name)
             delta = self._current_time - self._previous_time
 
-            self._scene.update(delta, self._context)
-            self._scene.render(delta, self._context)
+            # Handle events
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self._stop_event.set()
+                else:
+                    self._scene.handle_event(event, self._context)
 
+            # Handle updates
+            self._scene.update(delta, self._context)
+
+            # Render the app
+            self._screen.blit(self._background, (0, 0))
+            self._scene.render(delta, self._context)
+            pygame.display.flip()
+
+            # Update time for delta next update
             self._previous_time = self._current_time
 
-# if __name__ == '__main__':
-#
-#     def ping(delta, context):
-#         acc = context.get("test.acc")
-#         acc += delta
-#         if acc > 1000:
-#             print("PING")
-#             acc -= 1000
-#         context.set("test.acc", acc)
-#
-#
-#     s = Node("ROOT", children=[
-#         Node("BRANCH1", children=[
-#             Node("LEAF11"),
-#             Node("LEAF12"),
-#         ]),
-#         Node("BRANCH2", children=[
-#             Node("LEAF21"),
-#             Node("LEAF22"),
-#             Node("LEAF23"),
-#         ])
-#     ])
-#     app = App("test_app", s)
-#     app._context.set("test.acc", 0)
-#
-#     s.get_node("ROOT/BRANCH1/LEAF12")._update_self = ping
-#     app.start()
-#     app._context.set("test.acc", 0)
-#     app.wait(5)
-#     app.stop()
+
+if __name__ == '__main__':
+
+    class PingNode(Node):
+
+        def __init__(self, name: str, ping_time: int = 1000, parent: Optional[Node] = None,
+                     children: Optional[List[Node]] = None):
+            super().__init__(name, parent=parent, children=children)
+            self.context_ping_acc_addr = ""
+            self.ping_time = ping_time
+            self.acc = 0
+
+        def _build_self(self, context: Context) -> None:
+            super()._build_self(context)
+            self.context_ping_acc_addr = "scene.{}.ping_acc".format(self.name)
+            context.set(self.context_ping_acc_addr, 0)
+
+        def _update_self(self, delta: float, context: Context) -> None:
+            ping_acc = context.get(self.context_ping_acc_addr)
+            ping_acc += delta
+            if ping_acc > self.ping_time:
+                self._logger.info("PING")
+                ping_acc -= self.ping_time
+            context.set(self.context_ping_acc_addr, ping_acc)
+
+
+    s = Node("ROOT", children=[
+        Node("BRANCH1", children=[
+            PingNode("LEAF11", 500),
+            Node("LEAF12"),
+        ]),
+        Node("BRANCH2", children=[
+            Node("LEAF21"),
+            Node("LEAF22"),
+            PingNode("LEAF23", 1000),
+        ])
+    ])
+    app = App("test_app", s, window_size=(1600, 900), fullscreen=False)
+    app.start()
+    app.wait(5)
+    app.stop()

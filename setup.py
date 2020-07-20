@@ -4,13 +4,14 @@ from setuptools import setup
 
 NAME = 'pyengy-2d'
 VERSION = '0.0.1'
-DESCRIPTION = 'Simple 2D game engine based on PyGame  Generated Computational Graphs'
+DESCRIPTION = 'Simple 2D game engine based on PyGame and node architecture'
 AUTHOR = 'José Antonio Díaz Mata'
 EMAIL = 'jose.antonio.diaz.mata@gmail.com'
 URL = 'https://github.com/FreNeS1/PyEngy-2d'
 PYTHON_REQUIRES = '>=3.6, <4'
 INSTALL_REQUIRES = [
-    "pygame>=1.9.0<2.0.0"
+    "pygame>=2.0.0<3.0.0"
+    "numpy>=1.19.0<2.0.0"
 ]
 
 with open('README.md') as f:
