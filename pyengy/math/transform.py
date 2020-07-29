@@ -25,15 +25,15 @@ class Transform2D:
         :param rotation: Rotation of the transform, clockwise in radians.
         :param scale: Scale of the transform.
         """
-        theta, sx, sy = self.__normalize(rotation, scale[0], scale[1])
         self.position = position
         """Position of the transform, given left to right X coordinates and up to down Y coordinates."""
-        self.rotation = theta
+        self.rotation = rotation
         """Rotation of the transform, clockwise in radians. Will be between 0 and 2π radians."""
-        self.size = (sx, sy)
+        self.size = scale
         """Scale of the transform."""
-        self.matrix = self.__build_matrix(self.position, self.rotation, self.size)
+        self.matrix = np.eye(3, dtype=np.float64)
         """Transformation matrix."""
+        self.__build_matrix()
 
     def move(self, tx: float, ty: float, before=True) -> Transform2D:
         """
@@ -52,7 +52,7 @@ class Transform2D:
 
         transform = Transform2D.identity()
         transform.matrix = np.dot(t_matrix, self.matrix) if before else np.dot(self.matrix, t_matrix)
-        transform.position, transform.rotation, transform.size = self.__resolve_components(transform.matrix)
+        transform.__resolve_components()
         return transform
 
     def rotate(self, theta: float, before=False) -> Transform2D:
@@ -71,7 +71,7 @@ class Transform2D:
 
         transform = Transform2D.identity()
         transform.matrix = np.dot(r_matrix, self.matrix) if before else np.dot(self.matrix, r_matrix)
-        transform.position, transform.rotation, transform.size = self.__resolve_components(transform.matrix)
+        transform.__resolve_components()
         return transform
 
     def scale(self, sx: float, sy: float, before=False) -> Transform2D:
@@ -91,7 +91,7 @@ class Transform2D:
 
         transform = Transform2D.identity()
         transform.matrix = np.dot(s_matrix, self.matrix) if before else np.dot(self.matrix, s_matrix)
-        transform.position, transform.rotation, transform.size = self.__resolve_components(transform.matrix)
+        transform.__resolve_components()
         return transform
 
     def apply(self, other: Transform2D) -> Transform2D:
@@ -104,72 +104,62 @@ class Transform2D:
         """
         transform = Transform2D.identity()
         transform.matrix = np.dot(self.matrix, other.matrix)
-        transform.position, transform.rotation, transform.size = self.__resolve_components(transform.matrix)
+        transform.__resolve_components()
         return transform
 
-    @classmethod
-    def __build_matrix(cls, position: Tuple[float, float], rotation: float, scale: Tuple[float, float]) -> np.ndarray:
-        """
-        Auxiliary method to build a transformation matrix from a given position, rotation and scale.
+    def update(self):
+        """Update the internal matrix of the transform."""
+        self.__build_matrix()
 
-        :param position: Position of the transform, given left to right and up to down coordinates.
-        :param rotation: The clockwise rotation in radians.
-        :param scale: The x and y scale without shearing.
-        :return: The transformation matrix
+    def __build_matrix(self):
         """
-        tx, ty = position[0], position[1]
-        theta = rotation
-        sx, sy = scale[0], scale[1]
+        Auxiliary method to rebuild the transformation matrix from the transform position, rotation and scale.
+        Normalizes rotation and scale by default.
+        """
+        self.__normalize()
+        tx, ty = self.position[0], self.position[1]
+        theta = self.rotation
+        sx, sy = self.size[0], self.size[1]
 
-        return np.array([
+        self.matrix = np.array([
             [np.multiply(sx, np.cos(theta)), np.multiply(sy, -np.sin(theta)), tx],
             [np.multiply(sx, np.sin(theta)), np.multiply(sy, np.cos(theta)), ty],
             [0, 0, 1]
         ], dtype=np.float64)
 
-    @classmethod
-    def __resolve_components(cls, matrix: np.ndarray) -> Tuple[Tuple[float, float], float, Tuple[float, float]]:
+    def __resolve_components(self):
         """
         Auxiliary method to resolve readable components from a transformation matrix. Operations on the transform
         should be made with the matrix to avoid numeric issues, so this method will be used mostly to set the new
         position, rotation and scale after an operation.
-
-        :param matrix: The transformation matrix to extract.
-        :return: The extracted and normalized position, rotation and scale.
         """
-        tx, ty = matrix[0][2], matrix[1][2]
-        theta = np.arctan2(-matrix[0][1], matrix[0][0])
+        tx, ty = self.matrix[0][2], self.matrix[1][2]
+        theta = np.arctan2(self.matrix[1][0], self.matrix[0][0])
+
         if ((-3 / 4) * np.pi < theta < (-1 / 4) * np.pi) or ((1 / 4) * np.pi < theta < (3 / 4) * np.pi):
-            sx, sy = matrix[1][0] / np.sin(theta), matrix[0][1] / -np.sin(theta)
+            sx_sign = -np.sign(self.matrix[0][1]) * np.sign(np.sin(theta))
+            sy_sign = np.sign(self.matrix[1][0]) * np.sign(np.sin(theta))
         else:
-            sx, sy = matrix[0][0] / np.cos(theta), matrix[1][1] / np.cos(theta)
-        theta, sx, sy = cls.__normalize(theta, sx, sy)
+            sx_sign = np.sign(self.matrix[0][0]) * np.sign(np.cos(theta))
+            sy_sign = np.sign(self.matrix[1][1]) * np.sign(np.cos(theta))
 
-        return (tx, ty), theta, (sx, sy)
+        sx = sx_sign * np.sqrt(np.square(self.matrix[0][0]) + np.square(self.matrix[1][0]))
+        sy = sy_sign * np.sqrt(np.square(self.matrix[0][1]) + np.square(self.matrix[1][1]))
 
-    @classmethod
-    def __normalize(cls, theta: float, scale_x: float, scale_y: float) -> Tuple[float, float, float]:
+        self.position = (tx, ty)
+        self.rotation = theta
+        self.size = (sx, sy)
+        self.__normalize()
+
+    def __normalize(self):
         """
         Normalizes rotation and scale values. Will allow only positive rotation values between 0 and 2π radians. Scale
         will be transformed to avoid double negative scaling.
-
-        :param theta: The raw rotation.
-        :param scale_x: The raw X scaling factor. Can be negative.
-        :param scale_y: The raw Y scaling factor. Can be negative.
-        :return: The normalized values for rotation and scale.
         """
-        n_theta = theta
-        n_scale_x = scale_x
-        n_scale_y = scale_y
-
-        if scale_x < 0 and scale_y < 0:
-            n_scale_x = -scale_x
-            n_scale_y = -scale_y
-            n_theta = theta + np.pi
-
-        n_theta = n_theta % (2 * np.pi)
-
-        return n_theta, n_scale_x, n_scale_y
+        if self.size[0] < 0 and self.size[1] < 0:
+            self.size = (-self.size[0], -self.size[1])
+            self.rotation = self.rotation + np.pi
+        self.rotation = self.rotation % (2 * np.pi)
 
     @staticmethod
     def identity() -> Transform2D:

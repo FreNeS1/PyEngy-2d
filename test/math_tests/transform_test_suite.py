@@ -145,23 +145,22 @@ class TransformTestSuite(unittest.TestCase):
         self.assertAlmostEqual(1.5, s_transform.size[0])
         self.assertAlmostEqual(2, s_transform.size[1])
 
-    def test_transform_apply_applies_a_transform_after_another(self):
+    def test_transform_apply_composes_transforms(self):
         """
         - Given: Some transforms
         - When: Calling apply method with transform.
         - Then: Should compose the transforms into another in order.
         """
-        transform_1 = Transform2D((1, 3), (-1 / 4) * np.pi, (1, 1))
-        transform_2 = Transform2D((2, 2), (1 / 4) * np.pi, (2, 1))
-        transform_3 = Transform2D((2, 1), (1 / 4) * np.pi, (1, 1))
+        transform_1 = Transform2D((100, 200), (1 / 4) * np.pi, (2, 1))
+        transform_2 = Transform2D((200, -100), (-1 / 4) * np.pi, (1, 2))
 
-        a_transform = transform_1.apply(transform_2).apply(transform_3)
+        g_transform = transform_1.apply(transform_2)
 
-        self.assertAlmostEqual(5 + np.sqrt(8), a_transform.position[0])
-        self.assertAlmostEqual(4, a_transform.position[1])
-        self.assertAlmostEqual((1 / 4) * np.pi, a_transform.rotation)
-        self.assertAlmostEqual(2, a_transform.size[0])
-        self.assertAlmostEqual(1, a_transform.size[1])
+        self.assertAlmostEqual(453.5534, g_transform.position[0], 3)
+        self.assertAlmostEqual(412.1319, g_transform.position[1], 3)
+        self.assertAlmostEqual(0.32175, g_transform.rotation, 3)
+        self.assertAlmostEqual(1.581139, g_transform.size[0], 3)
+        self.assertAlmostEqual(3.162277, g_transform.size[1], 3)
 
 
 if __name__ == '__main__':

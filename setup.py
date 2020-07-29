@@ -3,7 +3,7 @@
 from setuptools import setup
 
 NAME = 'pyengy-2d'
-VERSION = '0.0.1'
+VERSION = '0.0.2'
 DESCRIPTION = 'Simple 2D game engine based on PyGame and node architecture'
 AUTHOR = 'José Antonio Díaz Mata'
 EMAIL = 'jose.antonio.diaz.mata@gmail.com'

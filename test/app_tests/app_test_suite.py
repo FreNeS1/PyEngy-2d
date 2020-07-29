@@ -2,7 +2,7 @@
 import unittest
 from unittest.mock import Mock
 
-from node import Node
+from pyengy.node import Node
 from pyengy.app import App
 
 

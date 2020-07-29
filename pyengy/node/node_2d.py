@@ -3,7 +3,8 @@
 from typing import Optional, List, Tuple
 
 from pyengy.math import Transform2D
-from .node import Node
+from pyengy.math.unit_conversions import degrees_to_radians, radians_to_degrees
+from pyengy.node import Node
 
 
 class Node2D(Node):
@@ -16,7 +17,7 @@ class Node2D(Node):
     """
 
     def __init__(self, name: str, parent: Optional[Node] = None, children: Optional[List[Node]] = None,
-                 position: Tuple[float, float] = (0, 0), rotation: float = 0, scale: Tuple[float, float] = (1, 1)):
+                 position: Tuple[float, float] = (0, 0), rotation: float = 0, size: Tuple[float, float] = (1, 1)):
         """
         Instantiates a new Node2D.
 
@@ -26,26 +27,75 @@ class Node2D(Node):
         :param children: The children nodes. If not specified, the node will not append any children.
         :param position: The relative position of this node to its parent, or the origin of the screen.
         :param rotation: The relative rotation of this node to its parent, or the origin of the screen.
-        :param scale: The relative scale of this node to its parent, or the origin of the screen.
+        :param size: The relative scale of this node to its parent, or the origin of the screen.
         """
-        self._transform = Transform2D(position, rotation, scale)
-        self._global_transform = self._transform
+        self.transform = Transform2D(position, degrees_to_radians(rotation), size)
+        """Transform of the node to its parent."""
+        self.global_transform = self.transform
+        """Global transform of the node."""
         super().__init__(name, parent, children)
 
-    def _on_parent_changed(self):
-        super()._on_parent_changed()
-        self._on_parent_transform_changed()
+    @property
+    def position(self) -> Tuple[float, float]:
+        """Relative position of the node to its parent."""
+        return self.transform.position
 
-    def _on_parent_transform_changed(self):
+    @property
+    def rotation(self) -> float:
+        """Relative rotation of the node to its parent. Measured clockwise and in degrees."""
+        return radians_to_degrees(self.transform.rotation)
+
+    @property
+    def size(self) -> Tuple[float, float]:
+        """Relative size of the node to its parent."""
+        return self.transform.size
+
+    @property
+    def global_position(self) -> Tuple[float, float]:
+        """Global position of the node."""
+        return self.global_transform.position
+
+    @property
+    def global_rotation(self) -> float:
+        """Global rotation of the node. Measured clockwise and in degrees."""
+        return radians_to_degrees(self.global_transform.rotation)
+
+    @property
+    def global_size(self) -> Tuple[float, float]:
+        """Global size of the node."""
+        return self.global_transform.size
+
+    @position.setter
+    def position(self, position: Tuple[float, float]):
+        self.transform.position = position
+        self._on_transform_changed()
+
+    @rotation.setter
+    def rotation(self, rotation: float):
+        self.transform.rotation = degrees_to_radians(rotation)
+        self._on_transform_changed()
+
+    @size.setter
+    def size(self, scale: Tuple[float, float]):
+        self.transform.size = scale
+        self._on_transform_changed()
+
+    def _on_parent_changed(self) -> None:
+        super()._on_parent_changed()
+        self._on_transform_changed()
+
+    def _on_transform_changed(self) -> None:
         """
-        Auxiliary method to call when the a transform changes. Updates the transform when the parent changes or moves.
+        Auxiliary method to call when the transform changes. Updates the transform when the parent changes or moves.
         Will call itself on the node children automatically if they are Node2D nodes.
         """
+        self.transform.update()
+
         if self.parent is not None and isinstance(self.parent, Node2D):
-            self._global_transform = self.parent._global_transform.apply(self._transform)
+            self.global_transform = self.parent.global_transform.apply(self.transform)
         else:
-            self._global_transform = self._transform
+            self.global_transform = self.transform
 
         for child in self.children:
             if isinstance(child, Node2D):
-                child._on_parent_transform_changed()
+                child._on_transform_changed()
