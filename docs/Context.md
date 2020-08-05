@@ -4,5 +4,8 @@ The Engine uses a context object to pass and update internal values between the 
 
 ## Default context
 
-- `metadata` - Metadata of the application
+- `metadata: Dict` - Metadata of the application
   - `app_name: str` - Name of the application
+- `app: Dict` - Classes and resources of the application
+    - `screen: pygame.Surface` - The default main screen of the application.
+    - `resource_manager: ResourceManager` - The default resource manager of the application.

@@ -243,12 +243,12 @@ class Node:
 
         :param context: Contains the context data of the application.
         """
-        self.app_name = context.get("metadata.app_name")
+        self.app_name = context.get("metadata.app_name", item_type=str)
         self._logger = get_logger(self.path, self.app_name)
 
     def _render_self(self, delta: float, context: Context) -> None:
         """
-        Handles the node update.
+        Handles the node render.
 
         :param delta: The time since the last update in milliseconds.
         :param context: Contains the context data of the application.
@@ -256,7 +256,7 @@ class Node:
 
     def _update_self(self, delta: float, context: Context) -> None:
         """
-        Handles the node render.
+        Handles the node update.
 
         :param delta: The time since the last render in milliseconds.
         :param context: Contains the context data of the application.

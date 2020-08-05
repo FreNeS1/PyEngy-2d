@@ -14,13 +14,14 @@ class NodeError(PyEngyError):
         """
         Instantiates a new NodeError.
 
+        :param node: Valid identifier of the node that raised the error.
         :param message: Human readable description of the error.
         :param caused_by: List of exceptions that caused this one to be raised, if any.
         """
         super().__init__(message, caused_by)
 
         self.node = node
-        """Valid identifier of the node that raised the exception. Usually the string representation of the node."""
+        """Valid identifier of the node that raised the error. Usually the string representation of the node."""
 
     def _error_string(self):
         return "NodeError for node ({}): {}.".format(self.node, self.message)

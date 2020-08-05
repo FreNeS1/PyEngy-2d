@@ -1,12 +1,12 @@
 """Contains the App class."""
 
 import threading
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple
 
 import pygame
 
 from pyengy.node import Node
-from pyengy.util.context_utils import Context
+from pyengy.util import Context, ResourceManager
 from pyengy.util.logger_utils import get_logger
 from pyengy.util.time_utils import get_current_time, reset_time
 
@@ -23,12 +23,14 @@ class App:
     the app to close or stop, use the ``wait`` method, which will call the join method on the app thread.
     """
 
-    def __init__(self, name, scene: Node, window_size: Tuple[int, int] = (640, 480), fullscreen: bool = False):
+    def __init__(self, name, scene: Node, resource_path: str = "resources", window_size: Tuple[int, int] = (640, 480),
+                 fullscreen: bool = False):
         """
         Instantiates a new PyEngy app.
 
         :param name: The name of the app. Should be unique.
         :param scene: The scene for the app to handle.
+        :param resource_path: Path to the resources folder.
         :param window_size: The size of the window.
         :param fullscreen: If true, will set to fullscreen. Otherwise will set to window.
         """
@@ -50,6 +52,7 @@ class App:
         self._current_time = 0.0
         self._logger = get_logger("", self.name)
         self._context = Context({})
+        self._resource_manager = ResourceManager(resource_path)
 
     def start(self) -> None:
         """Starts the app. Does nothing if the app is already running."""
@@ -99,7 +102,10 @@ class App:
             "metadata": {
                 "app_name": self.name
             },
-            "screen": self._screen
+            "app": {
+                "screen": self._screen,
+                "resource_manager": self._resource_manager
+            }
         })
 
     def __run_app(self) -> None:
@@ -145,45 +151,3 @@ class App:
 
             # Update time for delta next update
             self._previous_time = self._current_time
-
-
-if __name__ == '__main__':
-
-    class PingNode(Node):
-
-        def __init__(self, name: str, ping_time: int = 1000, parent: Optional[Node] = None,
-                     children: Optional[List[Node]] = None):
-            super().__init__(name, parent=parent, children=children)
-            self.context_ping_acc_addr = ""
-            self.ping_time = ping_time
-            self.acc = 0
-
-        def _build_self(self, context: Context) -> None:
-            super()._build_self(context)
-            self.context_ping_acc_addr = "scene.{}.ping_acc".format(self.name)
-            context.set(self.context_ping_acc_addr, 0)
-
-        def _update_self(self, delta: float, context: Context) -> None:
-            ping_acc = context.get(self.context_ping_acc_addr)
-            ping_acc += delta
-            if ping_acc > self.ping_time:
-                self._logger.info("PING")
-                ping_acc -= self.ping_time
-            context.set(self.context_ping_acc_addr, ping_acc)
-
-
-    s = Node("ROOT", children=[
-        Node("BRANCH1", children=[
-            PingNode("LEAF11", 500),
-            Node("LEAF12"),
-        ]),
-        Node("BRANCH2", children=[
-            Node("LEAF21"),
-            Node("LEAF22"),
-            PingNode("LEAF23", 1000),
-        ])
-    ])
-    app = App("test_app", s, window_size=(1600, 900), fullscreen=False)
-    app.start()
-    app.wait(5)
-    app.stop()

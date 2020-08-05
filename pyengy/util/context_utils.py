@@ -1,11 +1,8 @@
 """Contains the context class."""
 
-from typing import Union, List, Dict, Set
+from typing import List, Optional, Type, Dict, Any
 
 from pyengy.error import PyEngyError
-
-ArgsValue = Union[int, float, str, bool, object, None, List["ArgsValue"], Set["ArgsValue"], Dict[str, "ArgsValue"]]
-Args = Dict[str, ArgsValue]
 
 
 class Context:
@@ -25,7 +22,7 @@ class Context:
     None
     """
 
-    def __init__(self, data: Args) -> None:
+    def __init__(self, data: Dict[str, Any]) -> None:
         """
         Initialize a new Context object with given data.
 
@@ -40,7 +37,7 @@ class Context:
         context_string += "\n}"
         return context_string
 
-    def get(self, path: str, raise_if_missing: bool = True) -> ArgsValue:
+    def get(self, path: str, raise_if_missing: bool = True, item_type: Optional[Type] = None) -> Any:
         """
         Retrieve a value with a dot separated path key. For example:
 
@@ -51,18 +48,21 @@ class Context:
         :param path: The dot separated path of the key we want to retrieve.
         :param raise_if_missing: Defines behavior when key is missing. If True, will raise a PyEngyError. Otherwise
                                  will return None.
+        :param item_type: Defines the type of the context item. If item is not type will raise a PyEngyError.
         :return: The value of the given key.
         """
         try:
-            return self.__retrieve(self.__parse_path(path))
+            return self.__retrieve(self.__parse_path(path), item_type)
         except KeyError as err:
             if raise_if_missing:
                 raise PyEngyError("Could not retrieve context item at \"{}\", item does not exist".format(path), [err])
             return None
         except TypeError as err:
             raise PyEngyError("Could not retrieve context item at \"{}\", path is illegal".format(path), [err])
+        except ValueError as err:
+            raise PyEngyError("Bad context item at \"{}\", is not {}".format(path, item_type.__class__.__name__), [err])
 
-    def set(self, path: str, value: ArgsValue) -> None:
+    def set(self, path: str, value: Any) -> None:
         """
         Set a value with a dot separated path key. For example:
 
@@ -81,7 +81,7 @@ class Context:
         except TypeError as err:
             raise PyEngyError("Could not set context item at \"{}\", path is illegal".format(path), [err])
 
-    def remove(self, path: str, raise_if_missing: bool = True) -> ArgsValue:
+    def remove(self, path: str, raise_if_missing: bool = True) -> Any:
         """
         Remove a value with a dot separated path key from the context. For example:
 
@@ -106,7 +106,7 @@ class Context:
         except TypeError as err:
             raise PyEngyError("Could not delete context item at \"{}\", path is illegal".format(path), [err])
 
-    def __retrieve(self, parsed_path: List[str]) -> ArgsValue:
+    def __retrieve(self, parsed_path: List[str], item_type: Optional[Type]) -> Any:
         """
         Internal method to retrieve a value from the internal dictionary.
 
@@ -117,9 +117,15 @@ class Context:
         for i in range(0, len(parsed_path) - 1):
             key = parsed_path[i]
             current = current[key]
-        return current[parsed_path[len(parsed_path) - 1]]
+        item = current[parsed_path[len(parsed_path) - 1]]
 
-    def __provide(self, parsed_path: List[str], value: ArgsValue) -> None:
+        if item_type is not None:
+            if not isinstance(item, item_type):
+                raise ValueError("Bad item type")
+
+        return item
+
+    def __provide(self, parsed_path: List[str], value: Any) -> None:
         """
         Internal method to set a value from the internal dictionary.
 
@@ -136,7 +142,7 @@ class Context:
                 current = current[key]
         current[parsed_path[len(parsed_path) - 1]] = value
 
-    def __delete(self, parsed_path: List[str]) -> ArgsValue:
+    def __delete(self, parsed_path: List[str]) -> Any:
         """
         Internal method to delete a value from the internal dictionary.
 

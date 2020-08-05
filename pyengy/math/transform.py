@@ -9,7 +9,7 @@ import numpy as np
 
 class Transform2D:
     """
-    Class that contains 2D position, rotation and scale. Can manage composition through transformation matrices.
+    Class that contains 2D position, rotation and size. Can manage composition through transformation matrices.
 
     Position is measured with left to right X coordinates and up to down Y coordinates. The rotation is measured
     clockwise, in radians. Scale is applied without shearing.
@@ -17,19 +17,19 @@ class Transform2D:
     All calculations will be made with an internal numpy matrix to minimize numeric error.
     """
 
-    def __init__(self, position: Tuple[float, float], rotation: float, scale: Tuple[float, float]) -> None:
+    def __init__(self, position: Tuple[float, float], rotation: float, size: Tuple[float, float]) -> None:
         """
-        Initialize a transformation matrix with a given position, rotation and scale. Does not handle shearing.
+        Initialize a transformation matrix with a given position, rotation and size. Does not handle shearing.
 
         :param position: Position of the transform, given left to right X coordinates and up to down Y coordinates.
         :param rotation: Rotation of the transform, clockwise in radians.
-        :param scale: Scale of the transform.
+        :param size: Scale of the transform.
         """
         self.position = position
         """Position of the transform, given left to right X coordinates and up to down Y coordinates."""
         self.rotation = rotation
         """Rotation of the transform, clockwise in radians. Will be between 0 and 2π radians."""
-        self.size = scale
+        self.size = size
         """Scale of the transform."""
         self.matrix = np.eye(3, dtype=np.float64)
         """Transformation matrix."""
@@ -113,8 +113,8 @@ class Transform2D:
 
     def __build_matrix(self):
         """
-        Auxiliary method to rebuild the transformation matrix from the transform position, rotation and scale.
-        Normalizes rotation and scale by default.
+        Auxiliary method to rebuild the transformation matrix from the transform position, rotation and size.
+        Normalizes rotation and size by default.
         """
         self.__normalize()
         tx, ty = self.position[0], self.position[1]
@@ -131,7 +131,7 @@ class Transform2D:
         """
         Auxiliary method to resolve readable components from a transformation matrix. Operations on the transform
         should be made with the matrix to avoid numeric issues, so this method will be used mostly to set the new
-        position, rotation and scale after an operation.
+        position, rotation and size after an operation.
         """
         tx, ty = self.matrix[0][2], self.matrix[1][2]
         theta = np.arctan2(self.matrix[1][0], self.matrix[0][0])
@@ -153,7 +153,7 @@ class Transform2D:
 
     def __normalize(self):
         """
-        Normalizes rotation and scale values. Will allow only positive rotation values between 0 and 2π radians. Scale
+        Normalizes rotation and size values. Will allow only positive rotation values between 0 and 2π radians. Scale
         will be transformed to avoid double negative scaling.
         """
         if self.size[0] < 0 and self.size[1] < 0:
@@ -164,8 +164,8 @@ class Transform2D:
     @staticmethod
     def identity() -> Transform2D:
         """
-        Returns the identity transform, which has no translation and rotation, and unit scale factor.
+        Returns the identity transform, which has no translation and rotation, and unit size factor.
 
         :return: The identity transform
         """
-        return Transform2D(position=(0, 0), rotation=0, scale=(1, 1))
+        return Transform2D(position=(0, 0), rotation=0, size=(1, 1))

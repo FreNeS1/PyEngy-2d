@@ -4,7 +4,7 @@ from typing import Optional, List, Tuple
 
 from pyengy.math import Transform2D
 from pyengy.math.unit_conversions import degrees_to_radians, radians_to_degrees
-from pyengy.node import Node
+from pyengy.node.node import Node
 
 
 class Node2D(Node):
@@ -17,7 +17,7 @@ class Node2D(Node):
     """
 
     def __init__(self, name: str, parent: Optional[Node] = None, children: Optional[List[Node]] = None,
-                 position: Tuple[float, float] = (0, 0), rotation: float = 0, size: Tuple[float, float] = (1, 1)):
+                 position: Tuple[float, float] = (0, 0), rotation: float = 0, scale: Tuple[float, float] = (1, 1)):
         """
         Instantiates a new Node2D.
 
@@ -27,9 +27,9 @@ class Node2D(Node):
         :param children: The children nodes. If not specified, the node will not append any children.
         :param position: The relative position of this node to its parent, or the origin of the screen.
         :param rotation: The relative rotation of this node to its parent, or the origin of the screen.
-        :param size: The relative scale of this node to its parent, or the origin of the screen.
+        :param scale: The relative scale of this node to its parent, or the origin of the screen.
         """
-        self.transform = Transform2D(position, degrees_to_radians(rotation), size)
+        self.transform = Transform2D(position, degrees_to_radians(rotation), scale)
         """Transform of the node to its parent."""
         self.global_transform = self.transform
         """Global transform of the node."""
@@ -46,7 +46,7 @@ class Node2D(Node):
         return radians_to_degrees(self.transform.rotation)
 
     @property
-    def size(self) -> Tuple[float, float]:
+    def scale(self) -> Tuple[float, float]:
         """Relative size of the node to its parent."""
         return self.transform.size
 
@@ -61,7 +61,7 @@ class Node2D(Node):
         return radians_to_degrees(self.global_transform.rotation)
 
     @property
-    def global_size(self) -> Tuple[float, float]:
+    def global_scale(self) -> Tuple[float, float]:
         """Global size of the node."""
         return self.global_transform.size
 
@@ -75,8 +75,8 @@ class Node2D(Node):
         self.transform.rotation = degrees_to_radians(rotation)
         self._on_transform_changed()
 
-    @size.setter
-    def size(self, scale: Tuple[float, float]):
+    @scale.setter
+    def scale(self, scale: Tuple[float, float]):
         self.transform.size = scale
         self._on_transform_changed()
 

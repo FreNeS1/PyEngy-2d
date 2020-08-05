@@ -13,6 +13,9 @@ INSTALL_REQUIRES = [
     "pygame>=2.0.0<3.0.0"
     "numpy>=1.19.0<2.0.0"
 ]
+TEST_REQUIRES = [
+    "snapshottest>=0.5.1<0.6.0"
+]
 
 with open('README.md') as f:
     readme_text = f.read()
@@ -32,5 +35,6 @@ setup(
     license=license_text,
     packages=["pyengy"],
     install_requires=INSTALL_REQUIRES,
+    tests_requires=TEST_REQUIRES,
     python_requires=PYTHON_REQUIRES,
 )

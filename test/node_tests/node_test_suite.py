@@ -1,4 +1,4 @@
-"""Contains the test suite for the base node class."""
+"""Contains the test suite for the base Node class."""
 
 import unittest
 from unittest.mock import Mock

@@ -1,4 +1,4 @@
-"""Contains the test suite for the base node class."""
+"""Contains the test suite for the Node 2D class."""
 
 import unittest
 
@@ -16,7 +16,7 @@ class Node2DTestSuite(unittest.TestCase):
         - When: Instantiating a node.
         - Then: Should create a node with correct parameters.
         """
-        node = Node2D("NODE_2D_NAME", position=(2, 5), rotation=180, size=(0.5, 0.5))
+        node = Node2D("NODE_2D_NAME", position=(2, 5), rotation=180, scale=(0.5, 0.5))
 
         self.assertEqual(id(node), node.id)
         self.assertEqual(True, node.active)
@@ -27,14 +27,14 @@ class Node2DTestSuite(unittest.TestCase):
         self.assertEqual(0, len(node.children))
         self.assertEqual((2, 5), node.position)
         self.assertAlmostEqual(180, node.rotation)
-        self.assertEqual((0.5, 0.5), node.size)
+        self.assertEqual((0.5, 0.5), node.scale)
         self.assertEqual((2, 5), node.transform.position)
         self.assertAlmostEqual(np.pi, node.transform.rotation)
         self.assertEqual((0.5, 0.5), node.transform.size)
         self.assertEqual((2, 5), node.global_position)
         self.assertAlmostEqual(180, node.global_rotation)
-        self.assertEqual((0.5, 0.5), node.global_size)
-        self.assertEqual(node.transform, node.transform)
+        self.assertEqual((0.5, 0.5), node.global_scale)
+        self.assertEqual(node.global_transform, node.transform)
 
     def test_init_with_parent_returns_a_well_defined_node_structure(self):
         """
@@ -43,7 +43,7 @@ class Node2DTestSuite(unittest.TestCase):
         - Then: Should create a node tree with correct parameters.
         """
         test = Node2D("TEST")
-        root = Node2D("ROOT", position=(10, 5), rotation=90, size=(2, 1), parent=test)
+        root = Node2D("ROOT", position=(10, 5), rotation=90, scale=(2, 1), parent=test)
         branch1 = Node2D("BRANCH1", position=(1, 1), parent=root)
         branch2 = Node2D("BRANCH2", position=(1, -1), parent=root)
         leaf11 = Node2D("LEAF11", position=(1, 1), parent=branch1)
@@ -61,13 +61,13 @@ class Node2DTestSuite(unittest.TestCase):
         self.assertListEqual([leaf21, leaf22, leaf23], branch2.children)
         self.assertEqual((1, -1), branch2.position)
         self.assertAlmostEqual(0, branch2.rotation)
-        self.assertEqual((1, 1), branch2.size)
+        self.assertEqual((1, 1), branch2.scale)
         self.assertEqual((1, -1), branch2.transform.position)
         self.assertAlmostEqual(0, branch2.transform.rotation)
         self.assertEqual((1, 1), branch2.transform.size)
         self.assertEqual((11, 7), branch2.global_position)
         self.assertAlmostEqual(90, branch2.global_rotation)
-        self.assertEqual((2, 1), branch2.global_size)
+        self.assertEqual((2, 1), branch2.global_scale)
         self.assertEqual((11, 7), branch2.global_transform.position)
         self.assertAlmostEqual((1 / 2) * np.pi, branch2.global_transform.rotation)
         self.assertEqual((2.0, 1), branch2.global_transform.size)
@@ -85,7 +85,7 @@ class Node2DTestSuite(unittest.TestCase):
         leaf23 = Node2D("LEAF23", position=(1, 1))
         branch1 = Node2D("BRANCH1", position=(1, 1), children=[leaf11, leaf12])
         branch2 = Node2D("BRANCH2", position=(1, -1), children=[leaf21, leaf22, leaf23])
-        root = Node2D("ROOT", position=(5, 5), rotation=90, size=(3, 1), children=[branch1, branch2])
+        root = Node2D("ROOT", position=(5, 5), rotation=90, scale=(3, 1), children=[branch1, branch2])
         test = Node2D("TEST", children=[root])
 
         self.assertEqual(id(branch1), branch1.id)
@@ -97,13 +97,13 @@ class Node2DTestSuite(unittest.TestCase):
         self.assertListEqual([leaf11, leaf12], branch1.children)
         self.assertEqual((1, 1), branch1.position)
         self.assertAlmostEqual(0, branch1.rotation)
-        self.assertEqual((1, 1), branch1.size)
+        self.assertEqual((1, 1), branch1.scale)
         self.assertEqual((1, 1), branch1.transform.position)
         self.assertAlmostEqual(0, branch1.transform.rotation)
         self.assertEqual((1, 1), branch1.transform.size)
         self.assertEqual((4, 8), branch1.global_position)
         self.assertAlmostEqual(90, branch1.global_rotation)
-        self.assertEqual((3, 1), branch1.global_size)
+        self.assertEqual((3, 1), branch1.global_scale)
         self.assertEqual((4, 8), branch1.global_transform.position)
         self.assertAlmostEqual((1 / 2) * np.pi, branch1.global_transform.rotation)
         self.assertEqual((3, 1), branch1.global_transform.size)
@@ -114,7 +114,7 @@ class Node2DTestSuite(unittest.TestCase):
         - When: Updating the position.
         - Then: Should update its transform.
         """
-        node = Node2D("NODE", position=(6, 5), rotation=180, size=(-1, 1))
+        node = Node2D("NODE", position=(6, 5), rotation=180, scale=(-1, 1))
         node.position = (1, 54)
 
         self.assertEqual((1, 54), node.position)
@@ -126,7 +126,7 @@ class Node2DTestSuite(unittest.TestCase):
         - When: Updating the rotation.
         - Then: Should update its transform.
         """
-        node = Node2D("NODE", position=(6, 5), rotation=180, size=(-1, 1))
+        node = Node2D("NODE", position=(6, 5), rotation=180, scale=(-1, 1))
         node.rotation = 270
 
         self.assertEqual(270, node.rotation)
@@ -138,10 +138,10 @@ class Node2DTestSuite(unittest.TestCase):
         - When: Updating the size.
         - Then: Should update its transform.
         """
-        node = Node2D("NODE", position=(6, 5), rotation=180, size=(-1, 1))
-        node.size = (-1, 2)
+        node = Node2D("NODE", position=(6, 5), rotation=180, scale=(-1, 1))
+        node.scale = (-1, 2)
 
-        self.assertEqual((-1, 2), node.size)
+        self.assertEqual((-1, 2), node.scale)
         self.assertEqual((-1, 2), node.transform.size)
 
     def test_set_parent_updates_transform(self):
@@ -150,16 +150,16 @@ class Node2DTestSuite(unittest.TestCase):
         - When: Setting a node as a child of another.
         - Then: Should update its global transform.
         """
-        parent = Node2D("PARENT", position=(1, 5), rotation=0, size=(0.5, 0.5))
-        child = Node2D("CHILD", position=(2, 4), rotation=0, size=(1, 1))
+        parent = Node2D("PARENT", position=(1, 5), rotation=0, scale=(0.5, 0.5))
+        child = Node2D("CHILD", position=(2, 4), rotation=0, scale=(1, 1))
         parent.add_child(child)
 
         self.assertEqual((2, 4), child.position)
         self.assertAlmostEqual(0, child.rotation)
-        self.assertEqual((1, 1), child.size)
+        self.assertEqual((1, 1), child.scale)
         self.assertEqual((2, 7), child.global_position)
         self.assertAlmostEqual(0, child.global_rotation)
-        self.assertEqual((0.5, 0.5), child.global_size)
+        self.assertEqual((0.5, 0.5), child.global_scale)
 
     def test_update_parent_updates_transform(self):
         """
@@ -167,16 +167,16 @@ class Node2DTestSuite(unittest.TestCase):
         - When: Updating the parameters of the parent.
         - Then: Should update its children.
         """
-        parent = Node2D("PARENT", position=(2, 3), rotation=0, size=(1, 1))
-        child = Node2D("CHILD", parent=parent, position=(6, 0), rotation=0, size=(2, 1))
-        parent.size = (0.5, 0.5)
+        parent = Node2D("PARENT", position=(2, 3), rotation=0, scale=(1, 1))
+        child = Node2D("CHILD", parent=parent, position=(6, 0), rotation=0, scale=(2, 1))
+        parent.scale = (0.5, 0.5)
 
         self.assertEqual((6, 0), child.position)
         self.assertAlmostEqual(0, child.rotation)
-        self.assertEqual((2, 1), child.size)
+        self.assertEqual((2, 1), child.scale)
         self.assertEqual((5, 3), child.global_position)
         self.assertAlmostEqual(0, child.global_rotation)
-        self.assertEqual((1, 0.5), child.global_size)
+        self.assertEqual((1, 0.5), child.global_scale)
 
 
 if __name__ == '__main__':

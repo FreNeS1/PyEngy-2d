@@ -1,12 +1,13 @@
-"""Contains the test suite for the time utils."""
+"""Contains the test suite for the context utils."""
 
 import unittest
+from typing import Dict, Any
 
 from pyengy.error import PyEngyError
-from pyengy.util.context_utils import Args, Context
+from pyengy.util.context_utils import Context
 
 
-def get_test_data() -> Args:
+def get_test_data() -> Dict[str, Any]:
     """
     Auxiliary method to return test data args.
 
@@ -21,7 +22,7 @@ def get_test_data() -> Args:
 
 
 class ContextUtilsTestSuite(unittest.TestCase):
-    """Test cases for the context utils file."""
+    """Test cases for the context class."""
 
     def test_context_init_saves_given_data(self):
         """
@@ -79,6 +80,28 @@ class ContextUtilsTestSuite(unittest.TestCase):
         context = Context(data)
 
         self.assertEqual(None, context.get("root.branch2.missing", raise_if_missing=False))
+
+    def test_context_get_returns_value_if_correct_type(self):
+        """
+        - Given: Context with test data
+        - When: Calling ``get`` with a matching item type.
+        - Then: Should return expected item.
+        """
+        data = get_test_data()
+        context = Context(data)
+
+        self.assertEqual(data["root"]["branch2"]["object"], context.get("root.branch2.object", item_type=object))
+
+    def test_context_get_raises_error_if_mismatched_type(self):
+        """
+        - Given: Context with test data
+        - When: Calling ``get`` with a mismatched item type.
+        - Then: Should raise an error.
+        """
+        data = get_test_data()
+        context = Context(data)
+
+        self.assertRaises(PyEngyError, lambda: context.get("root.branch2.boolean", item_type=str))
 
     def test_context_set_changes_value_at_path(self):
         """
