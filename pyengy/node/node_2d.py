@@ -9,7 +9,7 @@ from pyengy.node.node import Node
 
 class Node2D(Node):
     """
-    Represents a given 2D node in an environment.
+    Base 2D node.
 
     Contains the basic logic for 2D interaction: position, rotation and scaling in a 2D plane. By itself represents a
     transform or environment. Node2D and nodes that inherit from it can be encapsulated, and transforms will chain

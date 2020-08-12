@@ -25,6 +25,7 @@ class ResourceManager:
         """
         self._resources_path = resources_path
         self._images: Dict[str, pygame.Surface] = {}
+        self._sounds: Dict[str, pygame.mixer.Sound] = {}
 
     def get_image(self, path: str) -> pygame.Surface:
         """

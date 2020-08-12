@@ -110,6 +110,10 @@ class App:
 
     def __run_app(self) -> None:
         """Method executed by the app thread. Initializes the app and then calls app loop."""
+        # Initialize PyGame
+        pygame.display.init()
+        pygame.mixer.init()
+
         # Build the PyGame window
         screen_flags = pygame.DOUBLEBUF
         if self._fullscreen:

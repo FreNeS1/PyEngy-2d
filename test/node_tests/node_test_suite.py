@@ -1,6 +1,7 @@
 """Contains the test suite for the base Node class."""
 
 import unittest
+from typing import List
 from unittest.mock import Mock
 
 from pygame.event import Event
@@ -29,6 +30,26 @@ def create_node_tree():
     ])
 
 
+def set_parent(node: Node, parent: Node) -> None:
+    """
+    Auxiliary test method to set the parent of a node.
+
+    :param node: The node to set.
+    :param parent: The new parent of the node.
+    """
+    node.parent = parent
+
+
+def set_children(node: Node, children: List[Node]) -> None:
+    """
+    Auxiliary test method to set the children of a node.
+
+    :param node: The node to set.
+    :param children: The new children of the node.
+    """
+    node.children = children
+
+
 class NodeTestSuite(unittest.TestCase):
     """Test cases for the Node class."""
 
@@ -44,7 +65,7 @@ class NodeTestSuite(unittest.TestCase):
         self.assertEqual(True, node.active)
         self.assertEqual(True, node.visible)
         self.assertEqual("NODE_NAME", node.name)
-        self.assertEqual("NODE_NAME", node.path)
+        self.assertEqual("NODE_NAME", node._path)
         self.assertEqual(None, node.parent)
         self.assertEqual(0, len(node.children))
 
@@ -68,7 +89,7 @@ class NodeTestSuite(unittest.TestCase):
         self.assertEqual(True, branch2.active)
         self.assertEqual(True, branch2.visible)
         self.assertEqual("BRANCH2", branch2.name)
-        self.assertEqual("TEST/ROOT/BRANCH2", branch2.path)
+        self.assertEqual("TEST/ROOT/BRANCH2", branch2._path)
         self.assertEqual(root, branch2.parent)
         self.assertListEqual([leaf21, leaf22, leaf23], branch2.children)
 
@@ -92,7 +113,7 @@ class NodeTestSuite(unittest.TestCase):
         self.assertEqual(True, branch1.active)
         self.assertEqual(True, branch1.visible)
         self.assertEqual("BRANCH1", branch1.name)
-        self.assertEqual("TEST/ROOT/BRANCH1", branch1.path)
+        self.assertEqual("TEST/ROOT/BRANCH1", branch1._path)
         self.assertIs(root, branch1.parent)
         self.assertListEqual([leaf11, leaf12], branch1.children)
 
@@ -174,10 +195,10 @@ class NodeTestSuite(unittest.TestCase):
         branch2 = [n for n in root.children if n.name == "BRANCH2"][0]
         leaf23 = [n for n in branch2.children if n.name == "LEAF23"][0]
 
-        leaf23.set_parent(None)
+        leaf23.parent = None
 
         self.assertIs(None, leaf23.parent)
-        self.assertEqual("LEAF23", leaf23.path)
+        self.assertEqual("LEAF23", leaf23._path)
         self.assertNotIn(leaf23, branch2.children)
 
     def test_set_parent_node_sets_node_parent_and_resets_old_parent(self):
@@ -190,10 +211,10 @@ class NodeTestSuite(unittest.TestCase):
         branch2 = [n for n in root.children if n.name == "BRANCH2"][0]
         leaf23 = [n for n in branch2.children if n.name == "LEAF23"][0]
 
-        leaf23.set_parent(root)
+        leaf23.parent = root
 
         self.assertIs(root, leaf23.parent)
-        self.assertEqual("ROOT/LEAF23", leaf23.path)
+        self.assertEqual("ROOT/LEAF23", leaf23._path)
         self.assertIn(leaf23, root.children)
         self.assertNotIn(leaf23, branch2.children)
 
@@ -207,7 +228,7 @@ class NodeTestSuite(unittest.TestCase):
         branch1 = [n for n in root.children if n.name == "BRANCH1"][0]
         leaf11 = [n for n in branch1.children if n.name == "LEAF11"][0]
 
-        self.assertRaises(NodeError, lambda: root.set_parent(leaf11))
+        self.assertRaises(NodeError, lambda: set_parent(root, leaf11))
 
     def test_set_parent_node_with_name_collision_raises_error(self):
         """
@@ -219,7 +240,7 @@ class NodeTestSuite(unittest.TestCase):
         branch1 = [n for n in root.children if n.name == "BRANCH1"][0]
 
         new_leaf11 = Node("LEAF11")
-        self.assertRaises(NodeError, lambda: new_leaf11.set_parent(branch1))
+        self.assertRaises(NodeError, lambda: set_parent(new_leaf11, branch1))
 
     def test_set_children_to_none_resets_old_parent(self):
         """
@@ -231,12 +252,12 @@ class NodeTestSuite(unittest.TestCase):
         branch1 = [n for n in root.children if n.name == "BRANCH1"][0]
         branch2 = [n for n in root.children if n.name == "BRANCH2"][0]
 
-        root.set_children(None)
+        root.children = None
 
         self.assertIs(None, branch1.parent)
         self.assertIs(None, branch2.parent)
-        self.assertEqual("BRANCH1", branch1.path)
-        self.assertEqual("BRANCH2", branch2.path)
+        self.assertEqual("BRANCH1", branch1._path)
+        self.assertEqual("BRANCH2", branch2._path)
         self.assertNotIn(branch1, root.children)
         self.assertNotIn(branch2, root.children)
 
@@ -252,16 +273,16 @@ class NodeTestSuite(unittest.TestCase):
         leaf11 = [n for n in branch1.children if n.name == "LEAF11"][0]
         leaf12 = [n for n in branch1.children if n.name == "LEAF12"][0]
 
-        root.set_children([branch1, branch2, leaf11, leaf12])
+        root.children = [branch1, branch2, leaf11, leaf12]
 
         self.assertIs(root, branch1.parent)
         self.assertIs(root, branch2.parent)
         self.assertIs(root, leaf11.parent)
         self.assertIs(root, leaf12.parent)
-        self.assertEqual("ROOT/BRANCH1", branch1.path)
-        self.assertEqual("ROOT/BRANCH2", branch2.path)
-        self.assertEqual("ROOT/LEAF11", leaf11.path)
-        self.assertEqual("ROOT/LEAF12", leaf12.path)
+        self.assertEqual("ROOT/BRANCH1", branch1._path)
+        self.assertEqual("ROOT/BRANCH2", branch2._path)
+        self.assertEqual("ROOT/LEAF11", leaf11._path)
+        self.assertEqual("ROOT/LEAF12", leaf12._path)
         self.assertIn(branch1, root.children)
         self.assertIn(branch2, root.children)
         self.assertIn(leaf11, root.children)
@@ -279,7 +300,7 @@ class NodeTestSuite(unittest.TestCase):
         branch1 = [n for n in root.children if n.name == "BRANCH1"][0]
         leaf12 = [n for n in branch1.children if n.name == "LEAF12"][0]
 
-        self.assertRaises(NodeError, lambda: leaf12.set_children([root]))
+        self.assertRaises(NodeError, lambda: set_children(leaf12, [root]))
 
     def test_set_children_nodes_with_name_collision_raises_error(self):
         """
@@ -292,7 +313,7 @@ class NodeTestSuite(unittest.TestCase):
         branch2 = [n for n in root.children if n.name == "BRANCH2"][0]
 
         new_branch2 = Node("BRANCH2")
-        self.assertRaises(NodeError, lambda: root.set_children([branch1, branch2, new_branch2]))
+        self.assertRaises(NodeError, lambda: set_children(root, [branch1, branch2, new_branch2]))
 
     def test_add_child_node_sets_node_as_child_and_resets_old_parent(self):
         """
@@ -308,7 +329,7 @@ class NodeTestSuite(unittest.TestCase):
         branch1.add_child(leaf23)
 
         self.assertIs(branch1, leaf23.parent)
-        self.assertEqual("ROOT/BRANCH1/LEAF23", leaf23.path)
+        self.assertEqual("ROOT/BRANCH1/LEAF23", leaf23._path)
         self.assertIn(leaf23, branch1.children)
         self.assertNotIn(leaf23, branch2.children)
 
@@ -349,7 +370,7 @@ class NodeTestSuite(unittest.TestCase):
         branch1.remove_child(leaf12.id)
 
         self.assertIsNone(leaf12.parent)
-        self.assertEqual("LEAF12", leaf12.path)
+        self.assertEqual("LEAF12", leaf12._path)
         self.assertNotIn(leaf12, branch1.children)
 
     def test_remove_child_node_with_non_existing_id_raises_exception(self):
@@ -376,7 +397,7 @@ class NodeTestSuite(unittest.TestCase):
         branch1.remove_child(leaf12.name)
 
         self.assertIsNone(leaf12.parent)
-        self.assertEqual("LEAF12", leaf12.path)
+        self.assertEqual("LEAF12", leaf12._path)
         self.assertNotIn(leaf12, branch1.children)
 
     def test_remove_child_node_with_non_existing_name_raises_exception(self):
@@ -403,7 +424,7 @@ class NodeTestSuite(unittest.TestCase):
         branch1.remove_child(leaf12)
 
         self.assertIsNone(leaf12.parent)
-        self.assertEqual("LEAF12", leaf12.path)
+        self.assertEqual("LEAF12", leaf12._path)
         self.assertNotIn(leaf12, branch1.children)
 
     def test_remove_child_node_with_non_existing_instance_raises_exception(self):

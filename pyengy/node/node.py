@@ -13,7 +13,7 @@ from pyengy.util.logger_utils import get_logger, PyEngyLoggerWrapper
 
 class Node:
     """
-    Represents a given node in an environment.
+    Base simple Node.
 
     Contains the basic logic for node encapsulation and delegating. Instantiate the node with the constructor and then
     build the root node. Each node should handle it's own render with ``_render_self``, update with ``_update_self``
@@ -42,23 +42,23 @@ class Node:
         Name of the node. Will be used for user friendly interactions on log, display or error. Does not need to be
         globally unique, but should be unique between the children of the same parent and readonly.
         """
-        self.path = name
-        """Path of the node. Will be used to identify the node with tree notation. Should be unique and readonly."""
         self.visible = True
         """Marks if an node is visible. Invisible nodes do not render, and neither will its children."""
         self.active = True
         """Marks if an node is active. Inactive nodes do not update or handle events, and neither will its children."""
-        self.parent: Optional[Node] = None
-        """Reference to the parent node. If None, this is a root node."""
-        self.children: List[Node] = []
-        """List of child nodes."""
+        self._path = name
+        """Internal attribute for path."""
+        self._parent: Optional[Node] = None
+        """Internal attribute for parent."""
+        self._children: List[Node] = []
+        """Internal attribute for children."""
         self._logger: Optional[PyEngyLoggerWrapper] = None
         """Logger for the node. Will be instantiated as a PyEngyNode when node is built."""
 
         if parent:
-            self.set_parent(parent)
+            self.parent = parent
         if children:
-            self.set_children(children)
+            self.children = children
 
     def __str__(self) -> str:
         self_str = self.get_display_name()
@@ -66,6 +66,48 @@ class Node:
             children_str = list(map(lambda child: "\n  {}".format(str(child).replace("\n", "\n  ")), self.children))
             self_str = "{} {{{}\n}}".format(self_str, "".join(children_str))
         return self_str
+
+    @property
+    def path(self):
+        return self._path
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @property
+    def children(self):
+        return self._children
+
+    @parent.setter
+    def parent(self, parent: Optional[Node]) -> None:
+        """
+        Sets the node parent. Will reset previous.
+
+        :param parent: The node to set as parent. If None then set as a root node.
+        """
+        if self.parent:
+            self.parent.remove_child(self)
+        if parent:
+            parent.add_child(self)
+
+    @children.setter
+    def children(self, children: Optional[List[Node]]) -> None:
+        """
+        Sets the node children. Will reset previous.
+
+        :param children: The nodes to set as children. If none will not set any.
+        """
+        previous_children = list(self.children)
+        try:
+            for child in previous_children:
+                self.remove_child(child)
+            if children is not None:
+                for child in children:
+                    self.add_child(child)
+        except (NodeError, ValueError) as err:
+            self.children = previous_children
+            raise err
 
     def get_display_name(self) -> str:
         """
@@ -81,7 +123,7 @@ class Node:
 
         :return: Node identifier.
         """
-        return "{} {} at {}".format(self.__class__.__name__, self.id, self.path)
+        return "{} {} at {}".format(self.__class__.__name__, self.id, self._path)
 
     def get_node(self, identifier: Union[int, str]) -> Optional[Node]:
         """
@@ -102,34 +144,6 @@ class Node:
             return None
         return self.__find_node_by_path(identifier[len(self.name) + 1:])
 
-    def set_parent(self, parent: Optional[Node]) -> None:
-        """
-        Sets the node parent. Will reset previous.
-
-        :param parent: The node to set as parent. If None then set as a root node.
-        """
-        if self.parent:
-            self.parent.remove_child(self)
-        if parent:
-            parent.add_child(self)
-
-    def set_children(self, children: Optional[List[Node]]) -> None:
-        """
-        Sets the node children. Will reset previous.
-
-        :param children: The nodes to set as children. If none will not set any.
-        """
-        previous_children = list(self.children)
-        try:
-            for child in previous_children:
-                self.remove_child(child)
-            if children is not None:
-                for child in children:
-                    self.add_child(child)
-        except (NodeError, ValueError) as err:
-            self.children = previous_children
-            raise err
-
     def add_child(self, child: Node) -> None:
         """
         Adds a child to this node.
@@ -139,13 +153,13 @@ class Node:
         """
         if self.__cyclic_node_dependency([child]):
             raise NodeError(self.get_identifier(), "Cyclic dependency with ({})".format(child.get_identifier()))
-        if any([child.name == c.name for c in self.children]):
+        if any([child.name == c.name for c in self._children]):
             raise NodeError(self.get_identifier(), "Not unique name for child \"{}\"".format(child.name))
-        if child.parent:
-            child.parent.remove_child(child)
+        if child._parent:
+            child._parent.remove_child(child)
 
-        child.parent = self
-        self.children.append(child)
+        child._parent = self
+        self._children.append(child)
         child._on_parent_changed()
 
     def remove_child(self, child: Union[int, str, Node]) -> None:
@@ -157,26 +171,26 @@ class Node:
         """
         # Child is an ID
         if isinstance(child, int):
-            catcher = [c for c in self.children if c.id == child]
+            catcher = [c for c in self._children if c.id == child]
             if len(catcher) == 0:
                 raise NodeError(self.get_identifier(), "No child with id \"{}\"".format(child))
             child_node = catcher[0]
 
         # Child is a name
         elif isinstance(child, str):
-            catcher = [c for c in self.children if c.name == child]
+            catcher = [c for c in self._children if c.name == child]
             if len(catcher) == 0:
                 raise NodeError(self.get_identifier(), "No child with name \"{}\"".format(child))
             child_node = catcher[0]
 
         # Child is a node
         else:
-            if child not in self.children:
+            if child not in self._children:
                 raise NodeError(self.get_identifier(), "\"{}\" is not a child".format(child.get_identifier()))
             child_node = child
 
-        child_node.parent = None
-        self.children.remove(child_node)
+        child_node._parent = None
+        self._children.remove(child_node)
         child_node._on_parent_changed()
 
     def build(self, context: Context):
@@ -244,7 +258,7 @@ class Node:
         :param context: Contains the context data of the application.
         """
         self.app_name = context.get("metadata.app_name", item_type=str)
-        self._logger = get_logger(self.path, self.app_name)
+        self._logger = get_logger(self._path, self.app_name)
 
     def _render_self(self, delta: float, context: Context) -> None:
         """
@@ -275,9 +289,9 @@ class Node:
         Auxiliary method to update a node when it's parent changes. By default updates the path.
         Will call itself on the node children automatically.
         """
-        self.path = "{}/{}".format(self.parent.path, self.name) if self.parent is not None else self.name
+        self._path = "{}/{}".format(self.parent._path, self.name) if self.parent is not None else self.name
         if self._logger is not None:
-            self._logger = get_logger(self.path, self.app_name)
+            self._logger = get_logger(self._path, self.app_name)
         for child in self.children:
             child._on_parent_changed()
 

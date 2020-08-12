@@ -12,6 +12,13 @@ from pyengy.util import Context, ResourceManager
 
 
 class Node2DSprite(Node2D):
+    """
+    Basic Sprite node.
+
+    Contains the basic logic for 2D interaction: position, rotation and scaling in a 2D plane. By itself represents a
+    transform or environment. Node2D and nodes that inherit from it can be encapsulated, and transforms will chain
+    between them.
+    """
 
     def __init__(self, name: str, texture_path: str, parent: Optional[Node] = None,
                  children: Optional[List[Node]] = None, position: Tuple[float, float] = (0, 0), rotation: float = 0,
