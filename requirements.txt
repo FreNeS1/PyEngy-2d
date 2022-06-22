@@ -4,7 +4,7 @@ fastdiff==0.2.0
 isort==4.3.21
 lazy-object-proxy==1.4.3
 mccabe==0.6.1
-numpy==1.19.0
+numpy==1.22.0
 pygame==2.0.0.dev8
 pylint==2.5.3
 six==1.15.0
